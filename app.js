@@ -1,0 +1,224 @@
+// Registrar el Service Worker para que funcione Offline
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log("Service Worker registrado"))
+        .catch(() => {});
+}
+
+// Modelo de datos inicial
+let rutinas = JSON.parse(localStorage.getItem('rutinas')) || [];
+
+// Normalizar datos antiguos/incorrectos guardados en localStorage
+function normalizeRutinas() {
+    rutinas = (rutinas || []).map(r => {
+        r.ejercicios = Array.isArray(r.ejercicios) ? r.ejercicios : [];
+        r.ejercicios = r.ejercicios.map(e => {
+            // compatibilidad con estructuras antiguas
+            if (!e.nombre && e.ejNombre) e.nombre = e.ejNombre;
+            if (!e.id) e.id = Date.now() + Math.floor(Math.random() * 999);
+
+            if (!Array.isArray(e.series)) {
+                if (typeof e.sets === 'number') {
+                    const arr = [];
+                    for (let i = 0; i < e.sets; i++) arr.push({ kg: e.peso || 0, reps: e.reps || 0, completado: false });
+                    e.series = arr;
+                } else if (e.kg != null || e.reps != null || e.peso != null) {
+                    e.series = [{ kg: e.kg || e.peso || 0, reps: e.reps || 0, completado: false }];
+                } else {
+                    e.series = [];
+                }
+            }
+            return e;
+        });
+        return r;
+    });
+}
+
+// Normalizar al inicio
+normalizeRutinas();
+
+function crearRutina(nombre) {
+    const nuevaRutina = {
+        id: Date.now(),
+        nombre: nombre,
+        ejercicios: []
+    };
+    rutinas.push(nuevaRutina);
+    guardarYRenderizar();
+}
+
+function agregarEjercicio(rutinaId, nombreEj) {
+    const rutina = rutinas.find(r => r.id === rutinaId);
+    if (!rutina) return;
+    const ejercicio = {
+        id: Date.now() + Math.floor(Math.random() * 999),
+        nombre: nombreEj,
+        series: [ { kg: 0, reps: 0, completado: false } ]
+    };
+    rutina.ejercicios.push(ejercicio);
+    guardarYRenderizar();
+}
+
+function agregarSerie(rutinaId, ejercicioId) {
+    const rutina = rutinas.find(r => r.id === rutinaId);
+    if (!rutina) return;
+    const ejercicio = rutina.ejercicios.find(e => e.id === ejercicioId);
+    if (!ejercicio) return;
+    const last = ejercicio.series[ejercicio.series.length - 1] || { kg: 0, reps: 0 };
+    ejercicio.series.push({ kg: last.kg || 0, reps: last.reps || 0, completado: false });
+    guardarYRenderizar();
+}
+
+function eliminarSerie(rutinaId, ejercicioId, serieIndex) {
+    const rutina = rutinas.find(r => r.id === rutinaId);
+    if (!rutina) return;
+    const ejercicio = rutina.ejercicios.find(e => e.id === ejercicioId);
+    if (!ejercicio) return;
+    ejercicio.series.splice(serieIndex, 1);
+    guardarYRenderizar();
+}
+
+function actualizarSerie(rutinaId, ejercicioId, serieIndex, field, value) {
+    const rutina = rutinas.find(r => r.id === rutinaId);
+    if (!rutina) return;
+    const ejercicio = rutina.ejercicios.find(e => e.id === ejercicioId);
+    if (!ejercicio) return;
+    const serie = ejercicio.series[serieIndex];
+    if (!serie) return;
+    if (field === 'kg' || field === 'reps') serie[field] = Number(value) || 0;
+    if (field === 'completado') serie.completado = Boolean(value);
+    guardarYRenderizar(false);
+}
+
+function guardarYRenderizar(save = true) {
+    if (save) localStorage.setItem('rutinas', JSON.stringify(rutinas));
+    render();
+}
+
+function crearElemento(tag, attrs = {}, ...children) {
+    const el = document.createElement(tag);
+    Object.entries(attrs).forEach(([k, v]) => {
+        if (k.startsWith('data-')) el.setAttribute(k, v);
+        else if (k === 'class') el.className = v;
+        else if (k === 'html') el.innerHTML = v;
+        else el[k] = v;
+    });
+    children.forEach(c => { if (c !== undefined && c !== null) el.append(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return el;
+}
+
+function render() {
+    const contenedor = document.getElementById('app');
+    contenedor.innerHTML = '';
+
+    if (rutinas.length === 0) {
+        const empty = crearElemento('div', { class: 'muted' }, 'No hay rutinas. Pulsa "+ Nueva Rutina" para empezar.');
+        contenedor.appendChild(empty);
+        return;
+    }
+
+    rutinas.forEach(rutina => {
+        const rc = crearElemento('div', { class: 'rutina-card' });
+        const header = crearElemento('div', { class: 'rutina-header' });
+        const title = crearElemento('div', { class: 'rutina-title' }, rutina.nombre);
+        const controls = crearElemento('div', { class: 'controls' });
+
+        const btnAddEj = crearElemento('button', { class: 'small-btn' }, '+ Ejercicio');
+        btnAddEj.onclick = () => {
+            const nombre = prompt('Nombre del ejercicio:');
+            if (nombre) agregarEjercicio(rutina.id, nombre);
+        };
+
+        const btnDelRut = crearElemento('button', { class: 'small-btn' }, 'Eliminar');
+        btnDelRut.onclick = () => {
+            if (!confirm('Eliminar rutina "' + rutina.nombre + '"?')) return;
+            rutinas = rutinas.filter(r => r.id !== rutina.id);
+            guardarYRenderizar();
+        };
+
+        controls.appendChild(btnAddEj);
+        controls.appendChild(btnDelRut);
+        header.appendChild(title);
+        header.appendChild(controls);
+        rc.appendChild(header);
+
+        // Lista de ejercicios
+        (rutina.ejercicios || []).forEach(ej => {
+            const card = crearElemento('div', { class: 'exercise-card' });
+            const eh = crearElemento('div', { class: 'exercise-header' });
+            const name = crearElemento('div', {}, '💪 ' + ej.nombre);
+            const exControls = crearElemento('div', { class: 'controls' });
+
+            const btnAddSet = crearElemento('button', { class: 'small-btn' }, '+ Serie');
+            btnAddSet.onclick = () => agregarSerie(rutina.id, ej.id);
+
+            const btnDelEj = crearElemento('button', { class: 'small-btn' }, 'Eliminar');
+            btnDelEj.onclick = () => {
+                rutina.ejercicios = rutina.ejercicios.filter(x => x.id !== ej.id);
+                guardarYRenderizar();
+            };
+
+            exControls.appendChild(btnAddSet);
+            exControls.appendChild(btnDelEj);
+            eh.appendChild(name);
+            eh.appendChild(exControls);
+            card.appendChild(eh);
+
+            // header row
+            const headerRow = crearElemento('div', { class: 'set-row', html: '' });
+            headerRow.style.color = 'var(--text-dim)';
+            headerRow.style.fontSize = '0.85rem';
+            headerRow.innerHTML = '<div>SERIE</div><div>ANTERIOR</div><div>KG</div><div>REPS</div><div>✔</div>';
+            card.appendChild(headerRow);
+
+            (ej.series || []).forEach((s, idx) => {
+                const row = crearElemento('div', { class: 'set-row' });
+
+                const colIndex = crearElemento('div', {}, String(idx + 1));
+                const colAnterior = crearElemento('div', { class: 'muted' }, '-');
+
+                const inputKg = crearElemento('input', { type: 'number', value: s.kg });
+                inputKg.oninput = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'kg', ev.target.value);
+
+                const inputReps = crearElemento('input', { type: 'number', value: s.reps });
+                inputReps.oninput = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'reps', ev.target.value);
+
+                const chk = crearElemento('input', { type: 'checkbox' });
+                chk.checked = s.completado;
+                chk.onchange = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'completado', ev.target.checked);
+
+                const delBtn = crearElemento('button', { class: 'small-btn' }, 'X');
+                delBtn.onclick = () => eliminarSerie(rutina.id, ej.id, idx);
+
+                const kgWrap = crearElemento('div'); kgWrap.appendChild(inputKg);
+                const repsWrap = crearElemento('div'); repsWrap.appendChild(inputReps);
+                const checkWrap = crearElemento('div'); checkWrap.appendChild(chk);
+
+                row.appendChild(colIndex);
+                row.appendChild(colAnterior);
+                row.appendChild(kgWrap);
+                row.appendChild(repsWrap);
+                row.appendChild(checkWrap);
+
+                card.appendChild(row);
+            });
+
+            const addSetFull = crearElemento('button', { class: 'btn-add-set add-exercise-btn' }, '+ Agregar Serie');
+            addSetFull.onclick = () => agregarSerie(rutina.id, ej.id);
+            card.appendChild(addSetFull);
+
+            rc.appendChild(card);
+        });
+
+        contenedor.appendChild(rc);
+    });
+}
+
+// Eventos UI principales
+document.getElementById('add-routine-btn').onclick = () => {
+    const nom = prompt('Nombre de la rutina:');
+    if (nom) crearRutina(nom);
+};
+
+// Inicial render
+guardarYRenderizar();

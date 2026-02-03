@@ -1,0 +1,127 @@
+:root {
+    --bg-color: #000000;
+    --card-bg: #121212;
+    --accent: #0081ff;
+    --text: #ffffff;
+    --text-dim: #888;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text);
+    font-family: sans-serif;
+    margin: 0;
+    padding: 15px;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: var(--text);
+}
+
+button.primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.rutina-container {
+    margin-bottom: 18px;
+}
+
+.rutina-card {
+    background: #0d0d0d;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #1a1a1a;
+}
+
+.rutina-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.rutina-title { color: var(--accent); font-weight: 700; }
+
+.exercise-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.exercise-header {
+    color: var(--accent);
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.set-row {
+    display: grid;
+    grid-template-columns: 0.5fr 1fr 1fr 1fr 0.5fr;
+    align-items: center;
+    text-align: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #222;
+}
+
+.set-row input {
+    background: #222;
+    border: none;
+    color: white;
+    width: 80%;
+    padding: 5px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.btn-add-set {
+    background: #1a1a1a;
+    color: white;
+    border: none;
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.small-btn {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid #222;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+input[type="number"] { -moz-appearance: textfield; }
+
+.muted { color: var(--text-dim); font-size: 0.85rem; }
+
+.add-exercise-btn { margin-top: 8px; width: 100%; }
