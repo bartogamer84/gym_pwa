@@ -143,11 +143,24 @@ function renderHome(contenedor) {
         const card = crearElemento('div', { class: 'rutina-card' });
         const name = crearElemento('div', { class: 'rutina-title' }, r.nombre);
         const desc = crearElemento('div', { class: 'muted' }, (r.ejercicios || []).slice(0,4).map(e => e.nombre).join(', '));
+
+        const controls = crearElemento('div', { class: 'controls' });
         const start = crearElemento('button', { class: 'primary' }, 'Empezar Rutina');
         start.onclick = () => { appState.view = 'routine'; appState.rutinaId = r.id; guardarYRenderizar(false); };
+
+        const delRut = crearElemento('button', { class: 'small-btn' }, 'Eliminar');
+        delRut.onclick = () => {
+            if (!confirm('Eliminar rutina "' + r.nombre + '"?')) return;
+            rutinas = rutinas.filter(x => x.id !== r.id);
+            guardarYRenderizar();
+        };
+
+        controls.appendChild(start);
+        controls.appendChild(delRut);
+
         card.appendChild(name);
         card.appendChild(desc);
-        card.appendChild(start);
+        card.appendChild(controls);
         contenedor.appendChild(card);
     });
 }
@@ -161,6 +174,20 @@ function renderRoutineView(contenedor, rutinaId) {
     const back = crearElemento('button', { class: 'small-btn' }, '← Volver');
     back.onclick = () => { appState.view = 'home'; appState.rutinaId = null; guardarYRenderizar(false); };
     header.appendChild(title);
+
+    // Botón para añadir ejercicio visible cuando la rutina está vacía o no
+    const addEjBtn = crearElemento('button', { class: 'primary' }, '+ Agregar Ejercicio');
+    addEjBtn.onclick = () => {
+        const nombre = prompt('Nombre del ejercicio:');
+        if (nombre) {
+            agregarEjercicio(rutina.id, nombre);
+            // mantener la vista en la misma rutina
+            appState.view = 'routine';
+            appState.rutinaId = rutina.id;
+        }
+    };
+
+    header.appendChild(addEjBtn);
     header.appendChild(back);
     contenedor.appendChild(header);
 
