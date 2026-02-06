@@ -37,6 +37,9 @@ function normalizeRutinas() {
 // Normalizar al inicio
 normalizeRutinas();
 
+// Estado de la app: 'home' o 'routine'
+const appState = { view: 'home', rutinaId: null };
+
 function crearRutina(nombre) {
     const nuevaRutina = {
         id: Date.now(),
@@ -111,114 +114,108 @@ function render() {
     const contenedor = document.getElementById('app');
     contenedor.innerHTML = '';
 
-    if (rutinas.length === 0) {
-        const empty = crearElemento('div', { class: 'muted' }, 'No hay rutinas. Pulsa "+ Nueva Rutina" para empezar.');
-        contenedor.appendChild(empty);
+    if (appState.view === 'home') return renderHome(contenedor);
+    if (appState.view === 'routine') return renderRoutineView(contenedor, appState.rutinaId);
+}
+
+function renderHome(contenedor) {
+    // Controls row
+    const topRow = crearElemento('div');
+    const btnNueva = crearElemento('button', { class: 'primary' }, 'Nueva Rutina');
+    btnNueva.onclick = () => {
+        const nom = prompt('Nombre de la rutina:');
+        if (nom) { crearRutina(nom); appState.view = 'home'; }
+    };
+    const btnExplorar = crearElemento('button', { class: 'small-btn' }, 'Explorar');
+    topRow.appendChild(btnNueva);
+    topRow.appendChild(btnExplorar);
+    contenedor.appendChild(topRow);
+
+    const title = crearElemento('h2', {}, 'Rutinas');
+    contenedor.appendChild(title);
+
+    if (!rutinas || rutinas.length === 0) {
+        contenedor.appendChild(crearElemento('div', { class: 'muted' }, 'Añade una rutina para empezar.'));
         return;
     }
 
-    rutinas.forEach(rutina => {
-        const rc = crearElemento('div', { class: 'rutina-card' });
-        const header = crearElemento('div', { class: 'rutina-header' });
-        const title = crearElemento('div', { class: 'rutina-title' }, rutina.nombre);
-        const controls = crearElemento('div', { class: 'controls' });
-
-        const btnAddEj = crearElemento('button', { class: 'small-btn' }, '+ Ejercicio');
-        btnAddEj.onclick = () => {
-            const nombre = prompt('Nombre del ejercicio:');
-            if (nombre) agregarEjercicio(rutina.id, nombre);
-        };
-
-        const btnDelRut = crearElemento('button', { class: 'small-btn' }, 'Eliminar');
-        btnDelRut.onclick = () => {
-            if (!confirm('Eliminar rutina "' + rutina.nombre + '"?')) return;
-            rutinas = rutinas.filter(r => r.id !== rutina.id);
-            guardarYRenderizar();
-        };
-
-        controls.appendChild(btnAddEj);
-        controls.appendChild(btnDelRut);
-        header.appendChild(title);
-        header.appendChild(controls);
-        rc.appendChild(header);
-
-        // Lista de ejercicios
-        (rutina.ejercicios || []).forEach(ej => {
-            const card = crearElemento('div', { class: 'exercise-card' });
-            const eh = crearElemento('div', { class: 'exercise-header' });
-            const name = crearElemento('div', {}, '💪 ' + ej.nombre);
-            const exControls = crearElemento('div', { class: 'controls' });
-
-            const btnAddSet = crearElemento('button', { class: 'small-btn' }, '+ Serie');
-            btnAddSet.onclick = () => agregarSerie(rutina.id, ej.id);
-
-            const btnDelEj = crearElemento('button', { class: 'small-btn' }, 'Eliminar');
-            btnDelEj.onclick = () => {
-                rutina.ejercicios = rutina.ejercicios.filter(x => x.id !== ej.id);
-                guardarYRenderizar();
-            };
-
-            exControls.appendChild(btnAddSet);
-            exControls.appendChild(btnDelEj);
-            eh.appendChild(name);
-            eh.appendChild(exControls);
-            card.appendChild(eh);
-
-            // header row
-            const headerRow = crearElemento('div', { class: 'set-row', html: '' });
-            headerRow.style.color = 'var(--text-dim)';
-            headerRow.style.fontSize = '0.85rem';
-            headerRow.innerHTML = '<div>SERIE</div><div>ANTERIOR</div><div>KG</div><div>REPS</div><div>✔</div>';
-            card.appendChild(headerRow);
-
-            (ej.series || []).forEach((s, idx) => {
-                const row = crearElemento('div', { class: 'set-row' });
-
-                const colIndex = crearElemento('div', {}, String(idx + 1));
-                const colAnterior = crearElemento('div', { class: 'muted' }, '-');
-
-                const inputKg = crearElemento('input', { type: 'number', value: s.kg });
-                inputKg.oninput = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'kg', ev.target.value);
-
-                const inputReps = crearElemento('input', { type: 'number', value: s.reps });
-                inputReps.oninput = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'reps', ev.target.value);
-
-                const chk = crearElemento('input', { type: 'checkbox' });
-                chk.checked = s.completado;
-                chk.onchange = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'completado', ev.target.checked);
-
-                const delBtn = crearElemento('button', { class: 'small-btn' }, 'X');
-                delBtn.onclick = () => eliminarSerie(rutina.id, ej.id, idx);
-
-                const kgWrap = crearElemento('div'); kgWrap.appendChild(inputKg);
-                const repsWrap = crearElemento('div'); repsWrap.appendChild(inputReps);
-                const checkWrap = crearElemento('div'); checkWrap.appendChild(chk);
-
-                row.appendChild(colIndex);
-                row.appendChild(colAnterior);
-                row.appendChild(kgWrap);
-                row.appendChild(repsWrap);
-                row.appendChild(checkWrap);
-
-                card.appendChild(row);
-            });
-
-            const addSetFull = crearElemento('button', { class: 'btn-add-set add-exercise-btn' }, '+ Agregar Serie');
-            addSetFull.onclick = () => agregarSerie(rutina.id, ej.id);
-            card.appendChild(addSetFull);
-
-            rc.appendChild(card);
-        });
-
-        contenedor.appendChild(rc);
+    rutinas.forEach(r => {
+        const card = crearElemento('div', { class: 'rutina-card' });
+        const name = crearElemento('div', { class: 'rutina-title' }, r.nombre);
+        const desc = crearElemento('div', { class: 'muted' }, (r.ejercicios || []).slice(0,4).map(e => e.nombre).join(', '));
+        const start = crearElemento('button', { class: 'primary' }, 'Empezar Rutina');
+        start.onclick = () => { appState.view = 'routine'; appState.rutinaId = r.id; guardarYRenderizar(false); };
+        card.appendChild(name);
+        card.appendChild(desc);
+        card.appendChild(start);
+        contenedor.appendChild(card);
     });
 }
 
+function renderRoutineView(contenedor, rutinaId) {
+    const rutina = rutinas.find(x => x.id === rutinaId);
+    if (!rutina) { appState.view = 'home'; return renderHome(contenedor); }
+
+    const header = crearElemento('div', { class: 'rutina-header' });
+    const title = crearElemento('div', { class: 'rutina-title' }, rutina.nombre);
+    const back = crearElemento('button', { class: 'small-btn' }, '← Volver');
+    back.onclick = () => { appState.view = 'home'; appState.rutinaId = null; guardarYRenderizar(false); };
+    header.appendChild(title);
+    header.appendChild(back);
+    contenedor.appendChild(header);
+
+    // Ahora renderizamos los ejercicios como antes
+    const rc = crearElemento('div');
+    (rutina.ejercicios || []).forEach(ej => {
+        const card = crearElemento('div', { class: 'exercise-card' });
+        const eh = crearElemento('div', { class: 'exercise-header' });
+        const name = crearElemento('div', {}, '💪 ' + ej.nombre);
+        const exControls = crearElemento('div', { class: 'controls' });
+
+        const btnAddSet = crearElemento('button', { class: 'small-btn' }, '+ Serie');
+        btnAddSet.onclick = () => agregarSerie(rutina.id, ej.id);
+        const btnDelEj = crearElemento('button', { class: 'small-btn' }, 'Eliminar');
+        btnDelEj.onclick = () => { rutina.ejercicios = rutina.ejercicios.filter(x => x.id !== ej.id); guardarYRenderizar(); };
+
+        exControls.appendChild(btnAddSet);
+        exControls.appendChild(btnDelEj);
+        eh.appendChild(name);
+        eh.appendChild(exControls);
+        card.appendChild(eh);
+
+        const headerRow = crearElemento('div', { class: 'set-row', html: '' });
+        headerRow.style.color = 'var(--text-dim)';
+        headerRow.style.fontSize = '0.85rem';
+        headerRow.innerHTML = '<div>SERIE</div><div>ANTERIOR</div><div>KG</div><div>REPS</div><div>✔</div>';
+        card.appendChild(headerRow);
+
+        (ej.series || []).forEach((s, idx) => {
+            const row = crearElemento('div', { class: 'set-row' });
+            const colIndex = crearElemento('div', {}, String(idx + 1));
+            const colAnterior = crearElemento('div', { class: 'muted' }, '-');
+            const inputKg = crearElemento('input', { type: 'number', value: s.kg });
+            inputKg.oninput = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'kg', ev.target.value);
+            const inputReps = crearElemento('input', { type: 'number', value: s.reps });
+            inputReps.oninput = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'reps', ev.target.value);
+            const chk = crearElemento('input', { type: 'checkbox' }); chk.checked = s.completado; chk.onchange = (ev) => actualizarSerie(rutina.id, ej.id, idx, 'completado', ev.target.checked);
+            const kgWrap = crearElemento('div'); kgWrap.appendChild(inputKg);
+            const repsWrap = crearElemento('div'); repsWrap.appendChild(inputReps);
+            const checkWrap = crearElemento('div'); checkWrap.appendChild(chk);
+            row.appendChild(colIndex); row.appendChild(colAnterior); row.appendChild(kgWrap); row.appendChild(repsWrap); row.appendChild(checkWrap);
+            card.appendChild(row);
+        });
+
+        const addSetFull = crearElemento('button', { class: 'btn-add-set add-exercise-btn' }, '+ Agregar Serie');
+        addSetFull.onclick = () => agregarSerie(rutina.id, ej.id);
+        card.appendChild(addSetFull);
+        rc.appendChild(card);
+    });
+
+    contenedor.appendChild(rc);
+}
+
 // Eventos UI principales
-document.getElementById('add-routine-btn').onclick = () => {
-    const nom = prompt('Nombre de la rutina:');
-    if (nom) crearRutina(nom);
-};
+// (La creación de rutinas se maneja desde la pantalla 'home' con el botón azul)
 
 // Inicial render
 guardarYRenderizar();
