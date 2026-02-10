@@ -1,3 +1,87 @@
+const SYSTEM_PROMPT = `
+Eres un asistente virtual especializado EXCLUSIVAMENTE en temas de gimnasio.
+
+SOLO puedes responder preguntas relacionadas con:
+- Rutinas de entrenamiento
+- Ejercicios de gimnasio
+- Pesos, repeticiones y progresión
+- Técnica correcta de ejercicios
+- Consejos básicos para entrenar
+
+REGLA OBLIGATORIA:
+Si el usuario pregunta algo que NO esté relacionado con gimnasio,
+responde exactamente:
+"No puedo responder a eso. Solo puedo ayudarte con temas de entrenamiento y gimnasio."
+`;
+
+async function preguntarAlBot(mensajeUsuario) {
+    try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer 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`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": window.location.origin
+            },
+            body: JSON.stringify({
+                model: "tngtech/deepseek-r1t-chimera:free",
+                messages: [
+                    {
+                        role: "system",
+                        content: SYSTEM_PROMPT
+                    },
+                    {
+                        role: "user",
+                        content: mensajeUsuario
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        console.log("Respuesta OpenRouter:", data);
+
+        // Validar estructura de respuesta
+        if (!response.ok) {
+            const error = data.error?.message || "Error desconocido en OpenRouter";
+            throw new Error(`OpenRouter error (${response.status}): ${error}`);
+        }
+
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            console.error("Estructura inesperada:", data);
+            throw new Error("Estructura de respuesta inesperada. Verifica la consola para más detalles.");
+        }
+
+        // Extraer el contenido (deepseek-r1 puede devolver con <think> tags)
+        let content = data.choices[0].message.content;
+        
+        // Si contiene tags <think>, extraer solo la respuesta
+        if (content.includes("<think>")) {
+            content = content.split("</think>")[1]?.trim() || content;
+        }
+
+        // Limpiar contenido de email/basura al final
+        // Eliminar todo después de patrones comunes de email
+        const emailPatterns = [
+            /\s*@gmail\.com.*$/gmis,  // @gmail.com y todo después
+            /\s*escribió:.*$/gmis,     // "escribió:" y todo después
+            /\s*El \d+ \w+ \d+.*$/gmis, // "El 17 jun 2024..." y todo después
+            /\s*--[\s\S]*$/gmis        // Separador de email "-- " y todo después
+        ];
+
+        emailPatterns.forEach(pattern => {
+            content = content.replace(pattern, "");
+        });
+
+        content = content.trim();
+
+        return content || "No se obtuvo respuesta del bot.";
+    } catch (error) {
+        console.error("Error en preguntarAlBot:", error);
+        return `Error: ${error.message}. Intenta de nuevo.`;
+    }
+}
+
 // Registrar el Service Worker para que funcione Offline
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
@@ -246,3 +330,58 @@ function renderRoutineView(contenedor, rutinaId) {
 
 // Inicial render
 guardarYRenderizar();
+
+// --- CHATBOT UI ---
+const chatInput = document.getElementById("chatInput");
+const chatSend = document.getElementById("chatSend");
+const chatMessages = document.getElementById("chatMessages");
+const chatBubble = document.getElementById("chatBubble");
+const chatPanel = document.getElementById("chatbot");
+const chatClose = document.getElementById("chatClose");
+
+function agregarMensaje(texto, autor = "bot") {
+    const p = document.createElement("p");
+    p.innerHTML = autor === "user"
+        ? `<b>Tú:</b> ${texto}`
+        : `<b>CoachBot:</b> ${texto}`;
+    chatMessages.appendChild(p);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Toggle panel when clicking bubble
+    if (chatBubble) chatBubble.addEventListener('click', () => {
+        if (!chatPanel) return;
+        chatPanel.classList.toggle('hidden');
+    });
+
+    if (chatClose) chatClose.addEventListener('click', () => {
+        if (!chatPanel) return;
+        chatPanel.classList.add('hidden');
+    });
+
+        chatSend.addEventListener("click", async () => {
+        const mensaje = chatInput.value.trim();
+        if (!mensaje) return;
+
+        agregarMensaje(mensaje, "user");
+        chatInput.value = "";
+
+        agregarMensaje("Pensando...", "bot");
+
+        try {
+                const respuesta = await preguntarAlBot(mensaje);
+                // Eliminar "Pensando..."
+                if (chatMessages.lastChild) chatMessages.lastChild.remove();
+                agregarMensaje(respuesta, "bot");
+            } catch (error) {
+                console.error("Error al obtener respuesta:", error);
+                // Eliminar "Pensando..."
+                if (chatMessages.lastChild) chatMessages.lastChild.remove();
+                agregarMensaje(`Error: No se pudo conectar con el bot. ${error.message}`, "bot");
+            }
+    });
+
+    // Enviar con Enter
+    chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") chatSend.click();
+});
