@@ -1,80 +1,26 @@
-const SYSTEM_PROMPT = `
-Eres un asistente virtual especializado EXCLUSIVAMENTE en temas de gimnasio.
-
-SOLO puedes responder preguntas relacionadas con:
-- Rutinas de entrenamiento
-- Ejercicios de gimnasio
-- Pesos, repeticiones y progresión
-- Técnica correcta de ejercicios
-- Consejos básicos para entrenar
-
-REGLA OBLIGATORIA:
-Si el usuario pregunta algo que NO esté relacionado con gimnasio,
-responde exactamente:
-"No puedo responder a eso. Solo puedo ayudarte con temas de entrenamiento y gimnasio."
-`;
-
 async function preguntarAlBot(mensajeUsuario) {
     try {
-        // Llamar al proxy en Vercel en lugar de OpenRouter directamente
-        const proxyURL = 'https://gym-pwa-murex.vercel.app/api/openrouter';
-        
-        const response = await fetch(proxyURL, {
-            method: "POST",
+        const response = await fetch('/api/openrouter', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'tngtech/deepseek-r1t-chimera:free',
-                messages: [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    { role: 'user', content: mensajeUsuario }
-                ]
+                mensaje: mensajeUsuario
             })
         });
 
         const data = await response.json();
-        console.log("Respuesta OpenRouter:", data);
 
-        // Validar estructura de respuesta
         if (!response.ok) {
-            const error = data.error?.message || "Error desconocido en OpenRouter";
-            throw new Error(`OpenRouter error (${response.status}): ${error}`);
+            throw new Error(data.error || "Error del servidor");
         }
 
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            console.error("Estructura inesperada:", data);
-            throw new Error("Estructura de respuesta inesperada. Verifica la consola para más detalles.");
-        }
-
-        // Extraer el contenido (deepseek-r1 puede devolver con <think> tags)
-        let content = data.choices[0].message.content;
-        
-        // Si contiene tags <think>, extraer solo la respuesta
-        if (content.includes("<think>")) {
-            content = content.split("</think>")[1]?.trim() || content;
-        }
-
-        // Limpiar contenido de email/basura al final
-        // Eliminar todo después de patrones comunes de email
-        const emailPatterns = [
-            /\s*@gmail\.com.*$/gmis,  // @gmail.com y todo después
-            /\s*escribió:.*$/gmis,     // "escribió:" y todo después
-            /\s*El \d+ \w+ \d+.*$/gmis, // "El 17 jun 2024..." y todo después
-            /\s*--[\s\S]*$/gmis        // Separador de email "-- " y todo después
-        ];
-
-        emailPatterns.forEach(pattern => {
-            content = content.replace(pattern, "");
-        });
-
-        content = content.trim();
-
-        return content || "No se obtuvo respuesta del bot.";
+        return data.respuesta || "No se obtuvo respuesta del bot.";
     } catch (error) {
         console.error("Error en preguntarAlBot:", error);
-        console.error("Error completo:", { name: error.name, message: error.message, stack: error.stack });
-        return `Error: ${error.message || 'No se pudo conectar con el bot. Intenta de nuevo.'}`;
+        return `Error: ${error.message}`;
     }
 }
+
 
 // Registrar el Service Worker para que funcione Offline
 if ('serviceWorker' in navigator) {
