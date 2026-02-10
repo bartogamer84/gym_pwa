@@ -17,7 +17,7 @@ responde exactamente:
 async function preguntarAlBot(mensajeUsuario) {
     try {
         // Llamar al proxy en Vercel en lugar de OpenRouter directamente
-        const proxyURL = 'https://gym-pwa-seven.vercel.app/api/openrouter';
+        const proxyURL = 'https://gym-pwa-murex.vercel.app/api/openrouter';
         
         const response = await fetch(proxyURL, {
             method: "POST",
@@ -71,7 +71,8 @@ async function preguntarAlBot(mensajeUsuario) {
         return content || "No se obtuvo respuesta del bot.";
     } catch (error) {
         console.error("Error en preguntarAlBot:", error);
-        return `Error: ${error.message}. Intenta de nuevo.`;
+        console.error("Error completo:", { name: error.name, message: error.message, stack: error.stack });
+        return `Error: ${error.message || 'No se pudo conectar con el bot. Intenta de nuevo.'}`;
     }
 }
 

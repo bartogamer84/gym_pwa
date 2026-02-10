@@ -21,7 +21,7 @@ export default async function handler(req, res) {
             headers: {
                 'Authorization': `Bearer ${process.env.OPENROUTER_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://gym-pwa-seven.vercel.app',
+                'HTTP-Referer': 'https://gym-pwa-murex.vercel.app',
                 'X-Title': 'GymPWA'
             },
             body: JSON.stringify(body)
