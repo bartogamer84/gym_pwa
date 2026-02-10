@@ -18,24 +18,14 @@ async function preguntarAlBot(mensajeUsuario) {
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
-            headers: {
-                "Authorization": `Bearer `,
-                "Content-Type": "application/json",
-                "HTTP-Referer": window.location.origin
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: "tngtech/deepseek-r1t-chimera:free",
-                messages: [
-                    {
-                        role: "system",
-                        content: SYSTEM_PROMPT
-                    },
-                    {
-                        role: "user",
-                        content: mensajeUsuario
-                    }
-                ]
-            })
+            model: 'tngtech/deepseek-r1t-chimera:free',
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: mensajeUsuario }
+            ]
+    })
         });
 
         const data = await response.json();
