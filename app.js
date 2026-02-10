@@ -19,7 +19,7 @@ async function preguntarAlBot(mensajeUsuario) {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer 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`,
+                "Authorization": `Bearer `,
                 "Content-Type": "application/json",
                 "HTTP-Referer": window.location.origin
             },
