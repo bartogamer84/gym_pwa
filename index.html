@@ -13,6 +13,29 @@
         <h1>Mis Rutinas</h1>
     </header>
 
+    <div class="app">
+        <!-- Chatbot: floating bubble + panel -->
+        <div id="chatBubble" class="chat-bubble" title="Abrir CoachBot">🤖</div>
+
+        <div id="chatbot" class="chatbot hidden">
+            <div class="chatbot-header">
+                <h3>🤖 CoachBot</h3>
+                <button id="chatClose" class="small-btn">✕</button>
+            </div>
+
+            <div id="chatMessages" class="chat-messages"></div>
+
+            <div class="chat-input">
+                <input 
+                type="text" 
+                id="chatInput" 
+                placeholder="Pregunta algo sobre tu entrenamiento..."
+                />
+                <button id="chatSend">Enviar</button>
+            </div>
+        </div>
+    </div>
+
     <main id="app">
         </main>
 
