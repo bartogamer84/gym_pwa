@@ -1,35 +1,45 @@
 // api/openrouter.js
-import fetch from 'node-fetch';
-
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
-        return res.status(405).send('Only POST allowed');
+        return res.status(405).json({ error: 'Only POST allowed' });
     }
-
-    // Opcional: validación básica de CORS/origen
-    // const allowed = ['https://tu-dominio.github.io', 'http://localhost:5500'];
-    // const origin = req.headers.origin;
-    // if (origin && !allowed.includes(origin)) return res.status(403).send('Origin not allowed');
 
     try {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
+        // Verificar que la clave esté configurada
+        if (!process.env.OPENROUTER_KEY) {
+            console.error('ERROR: OPENROUTER_KEY no está configurada');
+            return res.status(500).json({ error: 'API key not configured in Vercel' });
+        }
+
+        console.log('Proxy: Forwarding request to OpenRouter with model:', body.model);
+
         const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_KEY}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.OPENROUTER_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://gym-pwa-seven.vercel.app',
+                'X-Title': 'GymPWA'
+            },
+            body: JSON.stringify(body)
         });
 
         const text = await resp.text();
-        // Reenvía cabeceras relevantes y el cuerpo tal cual
-        res.status(resp.status).setHeader('content-type', resp.headers.get('content-type') || 'application/json');
+        
+        if (!resp.ok) {
+            console.error('OpenRouter error response:', resp.status, text.substring(0, 200));
+        } else {
+            console.log('OpenRouter success: status', resp.status);
+        }
+
+        res.status(resp.status);
+        res.setHeader('Content-Type', resp.headers.get('content-type') || 'application/json');
         return res.send(text);
     } catch (err) {
-        console.error('OpenRouter proxy error:', err);
-        return res.status(500).json({ error: 'Proxy error', message: String(err.message) });
+        console.error('Proxy error:', err.message);
+        return res.status(500).json({ error: 'Proxy error', message: err.message });
     }
 }

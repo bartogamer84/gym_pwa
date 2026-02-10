@@ -16,16 +16,19 @@ responde exactamente:
 
 async function preguntarAlBot(mensajeUsuario) {
     try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        // Llamar al proxy en Vercel en lugar de OpenRouter directamente
+        const proxyURL = 'https://gym-pwa-seven.vercel.app/api/openrouter';
+        
+        const response = await fetch(proxyURL, {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-            model: 'tngtech/deepseek-r1t-chimera:free',
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: mensajeUsuario }
-            ]
-    })
+                model: 'tngtech/deepseek-r1t-chimera:free',
+                messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    { role: 'user', content: mensajeUsuario }
+                ]
+            })
         });
 
         const data = await response.json();
