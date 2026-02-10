@@ -11,7 +11,11 @@ async function preguntarAlBot(mensajeUsuario) {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Error del servidor");
+            const msg =
+            typeof data.error === "string"
+                ? data.error
+                : data.error?.message || JSON.stringify(data);
+            throw new Error(msg);
         }
 
         return data.respuesta || "No se obtuvo respuesta del bot.";
