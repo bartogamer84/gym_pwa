@@ -3,8 +3,11 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: "Only POST allowed" });
     }
 
-    if (!process.env.OPENROUTER_KEY) {
-        return res.status(500).json({ error: "OPENROUTER_KEY no configurada" });
+    const apiKey = process.env.OPENROUTER_KEY;
+
+    if (!apiKey) {
+        console.error("OPENROUTER_KEY no definida");
+        return res.status(500).json({ error: "API key no configurada" });
     }
 
     const { mensaje } = req.body;
@@ -17,9 +20,9 @@ export default async function handler(req, res) {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${process.env.OPENROUTER_KEY}`,
+            "Authorization": `Bearer ${apiKey}`,
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://gym-pwa-murex.vercel.app",
+            "HTTP-Referer": "https://gym-mfwult25m-julio-emilios-projects.vercel.app",
             "X-Title": "GymPWA"
         },
         body: JSON.stringify({
@@ -27,14 +30,7 @@ export default async function handler(req, res) {
             messages: [
             {
                 role: "system",
-                content: `
-                Eres un asistente experto EXCLUSIVAMENTE en gimnasio.
-                Solo respondes preguntas sobre entrenamiento, rutinas,
-                ejercicios, series, repeticiones, técnica y descanso.
-
-                Si la pregunta no es de gimnasio, responde EXACTAMENTE:
-                "No puedo responder a eso. Solo puedo ayudarte con temas de entrenamiento y gimnasio."
-                `
+                content: "Eres un asistente experto solo en gimnasio. Si la pregunta no es de gimnasio, responde que no puedes."
             },
             {
                 role: "user",
@@ -47,20 +43,16 @@ export default async function handler(req, res) {
         const data = await response.json();
 
         if (!response.ok) {
+        console.error("OpenRouter error:", data);
         return res.status(response.status).json(data);
         }
 
-        let content = data.choices?.[0]?.message?.content || "";
+        res.status(200).json({
+        respuesta: data.choices[0].message.content
+        });
 
-        // Limpiar <think> si el modelo lo usa
-        if (content.includes("</think>")) {
-        content = content.split("</think>").pop().trim();
-        }
-
-        res.status(200).json({ respuesta: content });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Error interno", message: err.message });
+    } catch (error) {
+        console.error("Error backend:", error);
+        res.status(500).json({ error: "Error interno", message: error.message });
     }
 }
