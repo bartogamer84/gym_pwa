@@ -1,0 +1,19 @@
+{
+  "name": "gym_pwa",
+  "version": "1.0.0",
+  "description": "PWA for gym routines with Stripe payments",
+  "main": "app.js",
+  "scripts": {
+    "dev": "node app.js",
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "dotenv": "^16.0.0",
+    "micro": "^10.0.1"
+  },
+  "devDependencies": {},
+  "keywords": ["pwa", "gym", "stripe"],
+  "author": "",
+  "license": "ISC"
+}

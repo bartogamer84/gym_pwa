@@ -16,6 +16,10 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('fetch', e => {
+    // No cachear requests a /api/ para evitar problemas con pagos
+    if (e.request.url.includes('/api/')) {
+        return fetch(e.request);
+    }
     e.respondWith(
         caches.match(e.request).then(res => {
             return res || fetch(e.request);

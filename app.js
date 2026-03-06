@@ -155,8 +155,11 @@ function renderHome(contenedor) {
         if (nom) { crearRutina(nom); appState.view = 'home'; }
     };
     const btnExplorar = crearElemento('button', { class: 'small-btn' }, 'Explorar');
+    const btnPago = crearElemento('button', { class: 'small-btn' }, 'Comprar Premium');
+    btnPago.onclick = () => showPaymentSection();
     topRow.appendChild(btnNueva);
     topRow.appendChild(btnExplorar);
+    topRow.appendChild(btnPago);
     contenedor.appendChild(topRow);
 
     const title = crearElemento('h2', {}, 'Rutinas');
@@ -274,6 +277,45 @@ function renderRoutineView(contenedor, rutinaId) {
 
 // Inicial render
 guardarYRenderizar();
+
+// Stripe Payment Logic
+const stripe = Stripe('pk_test_51T7q7bBta88QJ4pVRveOVF20s7gPuCFzBg5HWztXf2E7jNJRXJunz3Isaq7Il1JmNMayW9HhDWrEhZEMWxAHxWcq00bgIW5dRs'); // Reemplaza con tu publishable key
+
+async function initializePayment() {
+
+    const res = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 5000 }), // $50.00
+    });
+
+    const { clientSecret } = await res.json();
+
+    const elements = stripe.elements({ clientSecret });
+    const paymentElement = elements.create('payment');
+    paymentElement.mount('#payment-element');
+
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const { error } = await stripe.confirmPayment({
+            elements,
+            confirmParams: {
+                return_url: window.location.origin + '/success.html', // Crea una página de éxito
+            },
+        });
+
+        if (error) {
+            document.getElementById('error-message').textContent = error.message;
+        }
+    });
+}
+
+// Mostrar sección de pago (puedes llamar esto desde un botón)
+function showPaymentSection() {
+    document.getElementById('payment-section').style.display = 'block';
+    initializePayment();
+}
 
 // --- CHATBOT UI ---
 const chatInput = document.getElementById("chatInput");
