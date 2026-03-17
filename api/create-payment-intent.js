@@ -32,7 +32,6 @@ export default async function handler(req, res) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount, // en centavos
       currency,
-      payment_method_types: ['card'],
       description,
       automatic_payment_methods: { enabled: true },
     });
