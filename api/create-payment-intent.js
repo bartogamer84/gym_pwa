@@ -15,9 +15,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    const currency = typeof req.body.currency === 'string' ? req.body.currency.toLowerCase() : 'usd';
+    const description = typeof req.body.description === 'string' ? req.body.description : 'Pago GymProgress premium';
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount, // en centavos
-      currency: 'usd',
+      currency,
+      payment_method_types: ['card'],
+      description,
       automatic_payment_methods: { enabled: true },
     });
 

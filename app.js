@@ -279,39 +279,70 @@ function renderRoutineView(contenedor, rutinaId) {
 guardarYRenderizar();
 
 // Stripe Payment Logic
-const stripe = Stripe('pk_test_51T7q7bBta88QJ4pVRveOVF20s7gPuCFzBg5HWztXf2E7jNJRXJunz3Isaq7Il1JmNMayW9HhDWrEhZEMWxAHxWcq00bgIW5dRs'); // Reemplaza con tu publishable key
+const stripePublicKey = 'pk_test_51T7q7bBta88QJ4pVRveOVF20s7gPuCFzBg5HWztXf2E7jNJRXJunz3Isaq7Il1JmNMayW9HhDWrEhZEMWxAHxWcq00bgIW5dRs'; // Reemplaza con tu publishable key de modo prueba
+const PRICE_CENTS = 5000; // $50.00 en centavos
+let stripe;
+let elements;
+let paymentInitialized = false;
 
-async function initializePayment() {
-
-    const res = await fetch('/api/create-payment-intent', {
+async function createPaymentIntent(amountCents = PRICE_CENTS) {
+    const resp = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 5000 }), // $50.00
+        body: JSON.stringify({ amount: amountCents, currency: 'usd', description: 'Pago GymProgress premium' }),
     });
 
-    const { clientSecret } = await res.json();
+    if (!resp.ok) {
+        const body = await resp.text();
+        throw new Error('Error creando PaymentIntent: ' + body);
+    }
 
-    const elements = stripe.elements({ clientSecret });
-    const paymentElement = elements.create('payment');
-    paymentElement.mount('#payment-element');
-
-    document.getElementById('payment-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-                return_url: window.location.origin + '/success.html', // Crea una página de éxito
-            },
-        });
-
-        if (error) {
-            document.getElementById('error-message').textContent = error.message;
-        }
-    });
+    const json = await resp.json();
+    if (!json.clientSecret) throw new Error('No se recibió clientSecret');
+    return json.clientSecret;
 }
 
-// Mostrar sección de pago (puedes llamar esto desde un botón)
+async function initializePayment() {
+    if (paymentInitialized) return;
+
+    try {
+        stripe = Stripe(stripePublicKey, { locale: 'es' });
+
+        const clientSecret = await createPaymentIntent();
+
+        elements = stripe.elements({ clientSecret });
+        const paymentElement = elements.create('payment');
+        paymentElement.mount('#payment-element');
+
+        document.getElementById('error-message').textContent = '';
+
+        const form = document.getElementById('payment-form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('submit').disabled = true;
+            document.getElementById('error-message').textContent = 'Procesando...';
+
+            const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: window.location.origin + '/success.html',
+                },
+            });
+
+            if (error) {
+                document.getElementById('error-message').textContent = error.message || 'Error en el pago';
+                document.getElementById('submit').disabled = false;
+            }
+        });
+
+        paymentInitialized = true;
+    } catch (err) {
+        document.getElementById('error-message').textContent = err.message;
+        console.error('initializePayment error:', err);
+    }
+}
+
+// Mostrar sección de pago (se llama desde el botón 'Comprar Premium')
 function showPaymentSection() {
     document.getElementById('payment-section').style.display = 'block';
     initializePayment();
